@@ -76,6 +76,11 @@ void test_dispatch_latency(unsigned samples, unsigned sleeptime)
 
 int main(int argc, char **argv)
 {
-    test_dispatch_latency(20, 0);
+    test_dispatch_latency(10, 0);
+    test_dispatch_latency(10, 1);
+    test_dispatch_latency(10, 10);
+    test_dispatch_latency(10, 100);
+    test_dispatch_latency(10, 1000);
+    test_dispatch_latency(10, 10000);
     return 0;
 }
