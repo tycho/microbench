@@ -39,6 +39,8 @@ void test_dispatch_latency(unsigned samples, unsigned sleeptime)
     dispatch_group_t group = dispatch_group_create();
 
     for (i = 0; i < samples; i++) {
+        usleep(sleeptime);
+
         /*
          lat[0] to lat[1] is latency to block execution
          lat[1] to lat[2] is latency from block execution to block synchronization
@@ -56,7 +58,6 @@ void test_dispatch_latency(unsigned samples, unsigned sleeptime)
 
         history[i] = lat[1] - lat[0];
         //history[i] = lat[2] - lat[1];
-        usleep(sleeptime);
     }
 
     dispatch_release(group);
