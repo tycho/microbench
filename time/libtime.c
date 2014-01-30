@@ -163,8 +163,6 @@ uint64_t libtime_wall(void)
 
 uint64_t libtime_cpu_to_wall(uint64_t clock)
 {
-    if (!cycles_per_usec)
-        libtime_init();
     return (clock * 1000ULL) / cycles_per_usec;
 }
 
