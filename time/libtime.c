@@ -101,12 +101,9 @@ static void _libtime_nanosleep(uint64_t ns)
 
 static void libtime_init_sleep(void)
 {
-	struct timespec ts;
 	uint32_t i, j;
 	uint64_t s, e, min;
 
-	ts.tv_sec = 0;
-	ts.tv_nsec = 0;
 
 	/*
 	 * Estimate the minimum time consumed by a nanosleep(0).

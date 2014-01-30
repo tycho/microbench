@@ -25,7 +25,6 @@ static const char *pretty_print(char *buffer, size_t bufsz, double v,
 
 int main(int argc, char **argv)
 {
-	struct timespec ts;
 	uint64_t s, e, ns_elapsed, ns_target, tick;
 	int64_t ns_to_sleep;
 	char buf[2][32];
@@ -45,12 +44,6 @@ int main(int argc, char **argv)
 	 * Find the number of expected nanoseconds per iteration.
 	 */
 	ns_target = 1e9 / hz;
-
-	/*
-	 * Since we'll never sleep for >= 1 second, we can just initialize tv_sec
-	 * to zero and leave it that way.
-	 */
-	ts.tv_sec = 0;
 
 	tick = 0;
 
