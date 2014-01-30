@@ -1,5 +1,6 @@
 all:
 
+SHELL      := /bin/bash
 MAKEFLAGS  += -Rr
 .SUFFIXES:
 
