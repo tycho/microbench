@@ -1,8 +1,8 @@
-CC      := clang
-RM      := rm -f
-LINK    := $(CC)
-CFLAGS  := -O2 -Wall -fblocks -I../time 
-LIBS    := -L../time -ltime -ldispatch -lBlocksRuntime -lm -lrt
+include ../common.mk
+include ../time/libtime.mk
+
+CFLAGS  += -fblocks
+LIBS    += -ldispatch -lBlocksRuntime
 
 BIN     := dispatchlatency
 SOURCES := DispatchLatency/main.c

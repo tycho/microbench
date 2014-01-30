@@ -1,7 +1,6 @@
-CC      := clang
-RM      := rm -f
-AR      := ar rcu
-CFLAGS  := -O2 -Wall -I../include
+include ../common.mk
+
+CFLAGS  += -I../include
 
 LIB     := libtime.a
 SOURCES := libtime.c

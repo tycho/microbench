@@ -1,4 +1,4 @@
-MAKEFLAGS := -Rr
+include common.mk
 
 BINS := libdispatch-latency/dispatchlatency xen-hypercall/xen-hypercall hz/hz
 DIRS := libdispatch-latency xen-hypercall time hz

@@ -1,8 +1,5 @@
-CC      := clang
-RM      := rm -f
-LINK    := $(CC)
-CFLAGS  := -O2 -Wall -I../time
-LIBS    := -L../time -ltime -lm -lrt
+include ../common.mk
+include ../time/libtime.mk
 
 BIN     := hz
 SOURCES := hz.c

@@ -1,8 +1,7 @@
-CC      := clang
-RM      := rm -f
-LINK    := $(CC)
-CFLAGS  := -O2 -Wall -I../time 
-LIBS    := -L../time -ltime -lxenctrl -lm -lrt
+include ../common.mk
+include ../time/libtime.mk
+
+LIBS    += -lxenctrl
 
 BIN     := xen-hypercall
 SOURCES := test_vmcall.c
