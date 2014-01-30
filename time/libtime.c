@@ -1,13 +1,23 @@
-#ifdef __MACH__
+#include "platform.h"
+
+#if defined(TARGET_OS_MACOSX)
 #include <mach/mach_time.h>
+#elif defined(TARGET_OS_WINDOWS)
+#include <windows.h>
 #else
 #include <time.h>
 #endif
+#include <stdint.h>
 #include <math.h>
 
 #include "libtime.h"
 
 static uint32_t cycles_per_usec;
+#if defined(TARGET_OS_MACOSX)
+static mach_timebase_info_data_t timebase;
+#elif defined(TARGET_OS_WINDOWS)
+static LARGE_INTEGER perf_frequency;
+#endif
 
 static uint32_t get_cycles_per_usec(void)
 {
@@ -36,6 +46,12 @@ void libtime_init(void)
     double delta, mean, S;
     uint32_t avg, cycles[NR_TIME_ITERS];
     int i, samples;
+
+#if defined(TARGET_OS_MACOSX)
+    mach_timebase_info(&timebase);
+#elif defined(TARGET_OS_WINDOWS)
+    QueryPerformanceFrequency(&perf_frequency);
+#endif
 
     cycles[0] = get_cycles_per_usec();
     S = delta = mean = 0.0;
@@ -71,11 +87,12 @@ void libtime_init(void)
 
 uint64_t libtime_wall(void)
 {
-#ifdef __MACH__
-    static mach_timebase_info_data_t timebase;
-    if (timebase.denom == 0)
-        mach_timebase_info(&timebase);
+#if defined(TARGET_OS_MACOSX)
     return (double)mach_absolute_time() * (double)timebase.numer / (double)timebase.denom;
+#elif defined(TARGET_OS_WINDOWS)
+    LARGE_INTEGER counter;
+    QueryPerformanceCounter(&counter);
+    return (counter.QuadPart * 1000000000ULL) / perf_frequency.QuadPart;
 #else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -85,7 +102,7 @@ uint64_t libtime_wall(void)
 
 uint64_t libtime_cpu_to_wall(uint64_t clock)
 {
-	if (!cycles_per_usec)
-		libtime_init();
+    if (!cycles_per_usec)
+        libtime_init();
     return (clock * 1000ULL) / cycles_per_usec;
 }
