@@ -1,5 +1,7 @@
 #include <stdint.h>
-#include <time.h>
+
+#ifndef __included_libtime_h
+#define __included_libtime_h
 
 #ifdef _MSC_VER
 #include <intrin.h>
@@ -7,6 +9,7 @@
 #endif
 
 void libtime_init(void);
+
 uint64_t libtime_wall(void);
 static inline uint64_t libtime_cpu(void)
 {
@@ -20,3 +23,5 @@ static inline uint64_t libtime_cpu(void)
 #endif
 }
 uint64_t libtime_cpu_to_wall(uint64_t clock);
+
+#endif
