@@ -14,6 +14,7 @@
 
 static uint32_t cycles_per_usec;
 static uint64_t min_sleep_ns;
+static uint64_t sleep_overhead_clk;
 #if defined(TARGET_OS_MACOSX)
 static mach_timebase_info_data_t timebase;
 #elif defined(TARGET_OS_WINDOWS)
@@ -107,8 +108,10 @@ static void libtime_init_sleep(void)
 	ts.tv_sec = 0;
 	ts.tv_nsec = 0;
 
+	/*
+	 * Estimate the minimum time consumed by a nanosleep(0).
+	 */
 	min = (uint64_t)-1;
-
 	for (j = 0; j < 100; j++) {
 	    s = libtime_cpu();
 	    for (i = 0; i < 128; i++) {
@@ -118,8 +121,22 @@ static void libtime_init_sleep(void)
 	    if ((e - s) < min)
 			min = (e - s);
 	}
+	min_sleep_ns = libtime_cpu_to_wall((min + 127) >> 7);
 
-	min_sleep_ns = (libtime_cpu_to_wall(min) + 127) >> 7;
+	/*
+	 * Estimate the minimum time consumed by libtime_nanosleep(0).
+	 */
+	min = (uint64_t)-1;
+	for (j = 0; j < 100; j++) {
+		s = libtime_cpu();
+		for (i = 0; i < 128; i++) {
+			libtime_nanosleep(0);
+		}
+		e = libtime_cpu();
+	    if ((e - s) < min)
+			min = (e - s);
+	}
+	sleep_overhead_clk = (min + 127) >> 7;
 }
 
 void libtime_init(void)
@@ -163,7 +180,7 @@ uint64_t libtime_nanosleep(int64_t ns)
 	 * sleep would take us over our quantum. Then we spin until we run the
 	 * clock down.
 	 */
-	s = libtime_cpu();
+	s = libtime_cpu() - sleep_overhead_clk;
 	do {
 		e = libtime_cpu();
 
