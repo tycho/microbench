@@ -91,12 +91,21 @@ static void libtime_init_cpuclock(void)
     cycles_per_usec = avg;
 }
 
-static void _libtime_nanosleep(uint64_t ns)
+static inline void _libtime_nanosleep(void)
 {
+#if defined(TARGET_OS_WINDOWS)
+	/* Hrm. */
+	Sleep(0);
+#else
 	struct timespec ts;
 	ts.tv_sec = 0;
-	ts.tv_nsec = ns;
+	ts.tv_nsec = 0;
+#if defined(TARGET_OS_MACOSX)
+	nanosleep(&ts, NULL);
+#else
 	clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL);
+#endif
+#endif
 }
 
 static void libtime_init_sleep(void)
@@ -104,6 +113,9 @@ static void libtime_init_sleep(void)
 	uint32_t i, j;
 	uint64_t s, e, min;
 
+#if defined(TARGET_OS_WINDOWS)
+	timeBeginPeriod(1);
+#endif
 
 	/*
 	 * Estimate the minimum time consumed by a nanosleep(0).
@@ -112,7 +124,7 @@ static void libtime_init_sleep(void)
 	for (j = 0; j < 100; j++) {
 	    s = libtime_cpu();
 	    for (i = 0; i < 128; i++) {
-			_libtime_nanosleep(0);
+			_libtime_nanosleep();
 	    }
 	    e = libtime_cpu();
 	    if ((e - s) < min)
@@ -183,7 +195,7 @@ void libtime_nanosleep(int64_t ns)
 		ns_to_sleep = ns - ns_elapsed;
 
 		if (ns_to_sleep > min_sleep_ns) {
-			_libtime_nanosleep(0);
+			_libtime_nanosleep();
 		}
 
 	} while (ns_elapsed < ns);
