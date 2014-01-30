@@ -166,7 +166,7 @@ uint64_t libtime_cpu_to_wall(uint64_t clock)
     return (clock * 1000ULL) / cycles_per_usec;
 }
 
-uint64_t libtime_nanosleep(int64_t ns)
+void libtime_nanosleep(int64_t ns)
 {
 	uint64_t s, e;
 	uint64_t ns_elapsed;
@@ -190,6 +190,4 @@ uint64_t libtime_nanosleep(int64_t ns)
 		}
 
 	} while (ns_elapsed < ns);
-
-	return e;
 }

@@ -88,7 +88,8 @@ int main(int argc, char **argv)
 			/*
 			 * Do a high-precision sleep until our quantum expries.
 			 */
-			e = libtime_nanosleep(ns_to_sleep);
+			libtime_nanosleep(ns_to_sleep);
+			e = libtime_cpu();
 
 			ns_elapsed = libtime_cpu_to_wall(e - s);
 			ns_to_sleep = ns_target - ns_elapsed;

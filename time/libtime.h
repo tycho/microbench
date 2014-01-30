@@ -24,6 +24,6 @@ static inline uint64_t libtime_cpu(void)
 }
 uint64_t libtime_cpu_to_wall(uint64_t clock);
 
-uint64_t libtime_nanosleep(int64_t ns);
+void libtime_nanosleep(int64_t ns);
 
 #endif
