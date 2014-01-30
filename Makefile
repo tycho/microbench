@@ -1,5 +1,7 @@
-BINS := libdispatch-latency/dispatchlatency xen-hypercall/xen-hypercall
-DIRS := libdispatch-latency xen-hypercall time
+MAKEFLAGS := -Rr
+
+BINS := libdispatch-latency/dispatchlatency xen-hypercall/xen-hypercall hz/hz
+DIRS := libdispatch-latency xen-hypercall time hz
 
 all: $(BINS)
 
@@ -18,3 +20,6 @@ libdispatch-latency/dispatchlatency:
 
 xen-hypercall/xen-hypercall:
 	$(MAKE) -C xen-hypercall xen-hypercall
+
+hz/hz:
+	$(MAKE) -C hz hz

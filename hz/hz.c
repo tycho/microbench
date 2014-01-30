@@ -23,35 +23,11 @@ static const char *pretty_print(char *buffer, size_t bufsz, double v,
 	return buffer;
 }
 
-uint64_t estimate_min_sleep(void)
-{
-	struct timespec ts;
-	uint32_t i, j;
-	uint64_t s, e, min;
-
-	ts.tv_sec = 0;
-	ts.tv_nsec = 0;
-
-	min = (uint64_t)-1;
-
-	for (j = 0; j < 100; j++) {
-		s = libtime_cpu();
-		for (i = 0; i < 100; i++) {
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL);
-		}
-		e = libtime_cpu();
-		if ((e - s) < min)
-			min = (e - s);
-	}
-
-	return libtime_cpu_to_wall(min) / 100;
-}
-
 int main(int argc, char **argv)
 {
 	struct timespec ts;
 	uint64_t s, e, ns_elapsed, ns_target, tick;
-	int64_t ns_to_sleep, min_sleep;
+	int64_t ns_to_sleep;
 	char buf[2][32];
 
 	/*
@@ -63,13 +39,6 @@ int main(int argc, char **argv)
 	 * Initialize our clocks.
 	 */
 	libtime_init();
-
-	/*
-	 * Find the minimum possible sleep duration.
-	 */
-	min_sleep = estimate_min_sleep();
-	printf("Estimated minimum sleep time: %s\n",
-		pretty_print(buf[0], sizeof(buf[0]), min_sleep, time_suffixes, 10));
 
 	/*
 	 * Our goal is for our iteration rate to match a certain frequency in Hz.
@@ -103,7 +72,8 @@ int main(int argc, char **argv)
 		ns_elapsed = libtime_cpu_to_wall(e - s);
 		ns_to_sleep = ns_target - ns_elapsed;
 
-		if (ns_elapsed > ns_target) {
+		if (ns_to_sleep < 0) {
+
 			/* 
 			 * This iteration went over the expected time per iteration. This
 			 * means that our workload needs to change in order to fit the
@@ -112,31 +82,17 @@ int main(int argc, char **argv)
 			printf("Completed work in %s, past deadline of %s\n",
 				pretty_print(buf[0], sizeof(buf[0]), ns_elapsed, time_suffixes, 10),
 				pretty_print(buf[1], sizeof(buf[1]), ns_target, time_suffixes, 10));
-		}
 
-		while (ns_to_sleep > min_sleep) {
+		} else if (ns_to_sleep > 0) {
+
 			/*
-			 * We're under time, so sleep for the remainder of the
-			 * timeslice.
+			 * Do a high-precision sleep until our quantum expries.
 			 */
-			ts.tv_nsec = 0;
-			clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL);
-
-			e = libtime_cpu();
+			e = libtime_nanosleep(ns_to_sleep);
 
 			ns_elapsed = libtime_cpu_to_wall(e - s);
 			ns_to_sleep = ns_target - ns_elapsed;
-		}
 
-		while (ns_to_sleep > 0) {
-			/*
-			 * We are very close to the time quantum, but we still have some
-			 * time to burn. Spin until we run down the clock.
-			 */
-			e = libtime_cpu();
-
-			ns_elapsed = libtime_cpu_to_wall(e - s);
-			ns_to_sleep = ns_target - ns_elapsed;
 		}
 
 		/*

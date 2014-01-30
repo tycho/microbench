@@ -13,6 +13,7 @@
 #include "libtime.h"
 
 static uint32_t cycles_per_usec;
+static uint64_t min_sleep_ns;
 #if defined(TARGET_OS_MACOSX)
 static mach_timebase_info_data_t timebase;
 #elif defined(TARGET_OS_WINDOWS)
@@ -40,18 +41,22 @@ static uint32_t get_cycles_per_usec(void)
     return (c_e - c_s + 127) >> 7;
 }
 
-void libtime_init(void)
-{
-    const int NR_TIME_ITERS = 10;
-    double delta, mean, S;
-    uint32_t avg, cycles[NR_TIME_ITERS];
-    int i, samples;
 
+static void libtime_init_wallclock(void)
+{
 #if defined(TARGET_OS_MACOSX)
     mach_timebase_info(&timebase);
 #elif defined(TARGET_OS_WINDOWS)
     QueryPerformanceFrequency(&perf_frequency);
 #endif
+}
+
+static void libtime_init_cpuclock(void)
+{
+    const int NR_TIME_ITERS = 10;
+    double delta, mean, S;
+    uint32_t avg, cycles[NR_TIME_ITERS];
+    int i, samples;
 
     cycles[0] = get_cycles_per_usec();
     S = delta = mean = 0.0;
@@ -85,6 +90,45 @@ void libtime_init(void)
     cycles_per_usec = avg;
 }
 
+static void _libtime_nanosleep(uint64_t ns)
+{
+	struct timespec ts;
+	ts.tv_sec = 0;
+	ts.tv_nsec = ns;
+	clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL);
+}
+
+static void libtime_init_sleep(void)
+{
+	struct timespec ts;
+	uint32_t i, j;
+	uint64_t s, e, min;
+
+	ts.tv_sec = 0;
+	ts.tv_nsec = 0;
+
+	min = (uint64_t)-1;
+
+	for (j = 0; j < 100; j++) {
+	    s = libtime_cpu();
+	    for (i = 0; i < 128; i++) {
+			_libtime_nanosleep(0);
+	    }
+	    e = libtime_cpu();
+	    if ((e - s) < min)
+			min = (e - s);
+	}
+
+	min_sleep_ns = (libtime_cpu_to_wall(min) + 127) >> 7;
+}
+
+void libtime_init(void)
+{
+	libtime_init_wallclock();
+	libtime_init_cpuclock();
+	libtime_init_sleep();
+}
+
 uint64_t libtime_wall(void)
 {
 #if defined(TARGET_OS_MACOSX)
@@ -105,4 +149,32 @@ uint64_t libtime_cpu_to_wall(uint64_t clock)
     if (!cycles_per_usec)
         libtime_init();
     return (clock * 1000ULL) / cycles_per_usec;
+}
+
+uint64_t libtime_nanosleep(int64_t ns)
+{
+	uint64_t s, e;
+	uint64_t ns_elapsed;
+	int64_t ns_to_sleep;
+
+	/*
+	 * Our goal is to sleep as close to 'ns' nanoseconds as possible. To
+	 * accomplish this, we use the system nanosleep functionality until another
+	 * sleep would take us over our quantum. Then we spin until we run the
+	 * clock down.
+	 */
+	s = libtime_cpu();
+	do {
+		e = libtime_cpu();
+
+		ns_elapsed = libtime_cpu_to_wall(e - s);
+		ns_to_sleep = ns - ns_elapsed;
+
+		if (ns_to_sleep > min_sleep_ns) {
+			_libtime_nanosleep(0);
+		}
+
+	} while (ns_elapsed < ns);
+
+	return e;
 }
