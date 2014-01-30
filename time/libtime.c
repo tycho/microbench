@@ -4,9 +4,8 @@
 #include <mach/mach_time.h>
 #elif defined(TARGET_OS_WINDOWS)
 #include <windows.h>
-#else
-#include <time.h>
 #endif
+#include <time.h>
 #include <stdint.h>
 #include <math.h>
 

@@ -1,5 +1,9 @@
 CFLAGS  += -I../time
-LIBS    += -L../time -ltime -lm -lrt
+LIBS    += -L../time -ltime -lm
+
+ifeq ($(OSNAME),Linux)
+LIBS    += -lrt
+endif
 
 ifeq ($(OSNAME),Cygwin)
 LIBS    += -lwinmm
