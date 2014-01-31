@@ -28,14 +28,14 @@ static const char *pretty_print(char *buffer, size_t bufsz, double v,
 
 int main(int argc, char **argv)
 {
-	uint64_t s, e, ns_elapsed, ns_target, tick;
+	int64_t s, e, ns_elapsed, ns_target, tick;
 	int64_t ns_to_sleep;
 	char buf[2][32];
 
 	/*
 	 * The rate to enforce.
 	 */
-	const uint64_t hz = 30;
+	const int64_t hz = 30;
 
 	/*
 	 * Initialize our clocks.
