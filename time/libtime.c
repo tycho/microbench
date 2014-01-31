@@ -11,6 +11,8 @@
 
 #include "libtime.h"
 
+#define ELEM_SIZE(x) (sizeof(x) / sizeof(x[0]))
+
 static uint32_t cycles_per_usec;
 static uint64_t min_sleep_ns;
 static uint64_t sleep_overhead_clk;
@@ -64,14 +66,13 @@ static void libtime_init_wallclock(void)
 
 static void libtime_init_cpuclock(void)
 {
-    const int NR_TIME_ITERS = 10;
     double delta, mean, S;
-    uint32_t avg, cycles[NR_TIME_ITERS];
+    uint32_t avg, cycles[10];
     int i, samples;
 
     cycles[0] = get_cycles_per_usec();
     S = delta = mean = 0.0;
-    for (i = 0; i < NR_TIME_ITERS; i++) {
+    for (i = 0; i < ELEM_SIZE(cycles); i++) {
         cycles[i] = get_cycles_per_usec();
         delta = cycles[i] - mean;
         if (delta) {
@@ -80,10 +81,10 @@ static void libtime_init_cpuclock(void)
         }
     }
 
-    S = sqrt(S / (NR_TIME_ITERS - 1.0));
+    S = sqrt(S / (ELEM_SIZE(cycles) - 1.0));
 
     samples = avg = 0;
-    for (i = 0; i < NR_TIME_ITERS; i++) {
+    for (i = 0; i < ELEM_SIZE(cycles); i++) {
         double this = cycles[i];
 
         if ((fmax(this, mean) - fmin(this, mean)) > S)
@@ -92,7 +93,7 @@ static void libtime_init_cpuclock(void)
         avg += this;
     }
 
-    S /= (double)NR_TIME_ITERS;
+    S /= (double)ELEM_SIZE(cycles);
     mean /= 10.0;
 
     avg /= samples;
