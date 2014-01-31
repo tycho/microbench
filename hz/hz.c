@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include <time.h>
 
+#ifdef _MSC_VER
+#define snprintf _snprintf
+#endif
+
 #include "libtime.h"
 
 const char *time_suffixes[] = { "ns", "us", "ms", "s", NULL };
