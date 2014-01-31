@@ -20,6 +20,17 @@ static mach_timebase_info_data_t timebase;
 static LARGE_INTEGER perf_frequency;
 #endif
 
+#ifdef _MSC_VER
+static inline double fmax(double l, double r)
+{
+	return (l > r) ? l : r;
+}
+static inline double fmin(double l, double r)
+{
+	return (l < r) ? l : r;
+}
+#endif
+
 static uint32_t get_cycles_per_usec(void)
 {
     uint64_t wc_s, wc_e;
