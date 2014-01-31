@@ -4,17 +4,33 @@
 #define __included_libtime_h
 
 #ifdef _MSC_VER
-#include <intrin.h>
-#pragma intrinsic(__rdtsc)
+#  if _MSC_VER > 1200
+#    include <intrin.h>
+#    pragma intrinsic(__rdtsc)
+#  else
+#    include <windows.h>
+#  endif
+#  define inline __inline
 #endif
 
 void libtime_init(void);
 
 uint64_t libtime_wall(void);
+
 static inline uint64_t libtime_cpu(void)
 {
 #ifdef _MSC_VER
+#  if _MSC_VER > 1200
     return __rdtsc();
+#  else
+	LARGE_INTEGER ticks;
+	__asm {
+		rdtsc
+		mov ticks.HighPart, edx
+		mov ticks.LowPart, eax
+	}
+	return ticks.QuadPart;
+#  endif
 #else
     uint32_t lo, hi;
 
