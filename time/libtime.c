@@ -43,7 +43,7 @@ static uint32_t get_cycles_per_usec(void)
 
         wc_e = libtime_wall();
         elapsed = wc_e - wc_s;
-        if (elapsed >= 1280000ULL) {
+        if (elapsed >= 1280000) {
             c_e = libtime_cpu();
             break;
         }
@@ -172,17 +172,17 @@ uint64_t libtime_wall(void)
 #elif defined(TARGET_OS_WINDOWS)
     LARGE_INTEGER counter;
     QueryPerformanceCounter(&counter);
-    return (counter.QuadPart * 1000000000ULL) / perf_frequency.QuadPart;
+    return (counter.QuadPart * 1000000000) / perf_frequency.QuadPart;
 #else
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (ts.tv_sec * 1000000000ULL) + ts.tv_nsec;
+    return (ts.tv_sec * 1000000000) + ts.tv_nsec;
 #endif
 }
 
 uint64_t libtime_cpu_to_wall(uint64_t clock)
 {
-    return (clock * 1000ULL) / cycles_per_usec;
+    return (clock * 1000) / cycles_per_usec;
 }
 
 void libtime_nanosleep(int64_t ns)
