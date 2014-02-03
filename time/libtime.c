@@ -105,8 +105,7 @@ static void libtime_init_cpuclock(void)
 static inline void _libtime_nanosleep(void)
 {
 #if defined(TARGET_OS_WINDOWS)
-	/* Hrm. */
-	Sleep(0);
+	Sleep(1);
 #else
 	struct timespec ts;
 	ts.tv_sec = 0;
