@@ -14,7 +14,7 @@
 #define ELEM_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 static uint32_t cycles_per_usec;
-static uint64_t min_sleep_ns;
+static int64_t max_sleep_ns;
 static uint64_t sleep_overhead_clk;
 #if defined(TARGET_OS_MACOSX)
 static mach_timebase_info_data_t timebase;
@@ -121,7 +121,7 @@ static inline void _libtime_nanosleep(void)
 static void libtime_init_sleep(void)
 {
 	uint32_t i, j;
-	uint64_t s, e, min;
+	uint64_t s, e, min, max;
 
 #if defined(TARGET_OS_WINDOWS)
 	timeBeginPeriod(1);
@@ -130,17 +130,17 @@ static void libtime_init_sleep(void)
 	/*
 	 * Estimate the minimum time consumed by a nanosleep(0).
 	 */
-	min = (uint64_t)-1;
-	for (j = 0; j < 100; j++) {
+	max = 0;
+	for (j = 0; j < 10; j++) {
 	    s = libtime_cpu();
 	    for (i = 0; i < 128; i++) {
 			_libtime_nanosleep();
 	    }
 	    e = libtime_cpu();
-	    if ((e - s) < min)
-			min = (e - s);
+	    if ((e - s) > max)
+			max = (e - s);
 	}
-	min_sleep_ns = libtime_cpu_to_wall((min + 127) >> 7);
+	max_sleep_ns = libtime_cpu_to_wall((max + 127) >> 7);
 
 	/*
 	 * Estimate the minimum time consumed by libtime_nanosleep(0).
@@ -204,7 +204,7 @@ void libtime_nanosleep(int64_t ns)
 		ns_elapsed = libtime_cpu_to_wall(e - s);
 		ns_to_sleep = ns - ns_elapsed;
 
-		if (ns_to_sleep > min_sleep_ns) {
+		if (ns_to_sleep > max_sleep_ns) {
 			_libtime_nanosleep();
 		}
 
