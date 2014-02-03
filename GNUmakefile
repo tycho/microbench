@@ -3,6 +3,8 @@ include common.mk
 BINS := libdispatch-latency/dispatchlatency xen-hypercall/xen-hypercall hz/hz
 DIRS := libdispatch-latency xen-hypercall time hz
 
+.PHONY: $(BINS) time/libtime.a
+
 all: $(BINS)
 
 $(BINS): time/libtime.a
