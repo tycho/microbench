@@ -40,7 +40,11 @@ int main(int argc, char **argv)
 	/*
 	 * Initialize our clocks.
 	 */
+	s = libtime_cpu();
 	libtime_init();
+	e = libtime_cpu();
+	ns_elapsed = libtime_cpu_to_wall(e - s);
+	printf("libtime_init took %s\n", pretty_print(buf[0], sizeof(buf[0]), ns_elapsed, time_suffixes, 10));
 
 	/*
 	 * Our goal is for our iteration rate to match a certain frequency in Hz.
