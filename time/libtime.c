@@ -128,7 +128,7 @@ static void libtime_init_sleep(void)
 	timeBeginPeriod(1);
 #endif
 
-	runs = 100;
+	runs = 10;
 	samples = 128;
 	shift = 7;
 
@@ -144,7 +144,7 @@ static void libtime_init_sleep(void)
 		 * Greater than a 100us, we should sample it fewer times so we don't
 		 * waste a lot of time testing it.
 		 */
-		runs = 50;
+		runs = 10;
 		samples = 4;
 		shift = 2;
 	}
@@ -167,7 +167,7 @@ static void libtime_init_sleep(void)
 	/*
 	 * Estimate the minimum time consumed by libtime_nanosleep(0).
 	 */
-	runs = 100;
+	runs = 10;
 	samples = 128;
 	shift = 7;
 
