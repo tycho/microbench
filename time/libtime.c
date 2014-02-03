@@ -139,7 +139,7 @@ static void libtime_init_sleep(void)
 	s = libtime_cpu();
 	_libtime_nanosleep();
 	e = libtime_cpu();
-	if (libtime_cpu_to_wall(e - s) > 1e6) {
+	if (libtime_cpu_to_wall(e - s) > 1000000) {
 		/*
 		 * Greater than a 100us, we should sample it fewer times so we don't
 		 * waste a lot of time testing it.
