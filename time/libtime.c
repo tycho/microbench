@@ -121,41 +121,67 @@ static inline void _libtime_nanosleep(void)
 static void libtime_init_sleep(void)
 {
 	uint32_t i, j;
+	uint32_t samples, runs, shift;
 	uint64_t s, e, min, max;
 
 #if defined(TARGET_OS_WINDOWS)
 	timeBeginPeriod(1);
 #endif
 
+	runs = 100;
+	samples = 128;
+	shift = 7;
+
+	/*
+	 * Check if our smallest sleep is large. If it is, we can't do too many
+	 * samples or else the latency for libtime_init() will be very high.
+	 */
+	s = libtime_cpu();
+	_libtime_nanosleep();
+	e = libtime_cpu();
+	if (libtime_cpu_to_wall(e - s) > 1e6) {
+		/*
+		 * Greater than a 100us, we should sample it fewer times so we don't
+		 * waste a lot of time testing it.
+		 */
+		runs = 50;
+		samples = 4;
+		shift = 2;
+	}
+
 	/*
 	 * Estimate the minimum time consumed by a nanosleep(0).
 	 */
 	max = 0;
-	for (j = 0; j < 10; j++) {
-	    s = libtime_cpu();
-	    for (i = 0; i < 128; i++) {
+	for (j = 0; j < runs; j++) {
+		s = libtime_cpu();
+		for (i = 0; i < samples; i++) {
 			_libtime_nanosleep();
-	    }
-	    e = libtime_cpu();
-	    if ((e - s) > max)
+		}
+		e = libtime_cpu();
+		if ((e - s) > max)
 			max = (e - s);
 	}
-	max_sleep_ns = libtime_cpu_to_wall((max + 127) >> 7);
+	max_sleep_ns = libtime_cpu_to_wall((max + samples - 1) >> shift);
 
 	/*
 	 * Estimate the minimum time consumed by libtime_nanosleep(0).
 	 */
+	runs = 100;
+	samples = 128;
+	shift = 7;
+
 	min = (uint64_t)-1;
-	for (j = 0; j < 100; j++) {
+	for (j = 0; j < runs; j++) {
 		s = libtime_cpu();
-		for (i = 0; i < 128; i++) {
+		for (i = 0; i < samples; i++) {
 			libtime_nanosleep(0);
 		}
 		e = libtime_cpu();
 	    if ((e - s) < min)
 			min = (e - s);
 	}
-	sleep_overhead_clk = (min + 127) >> 7;
+	sleep_overhead_clk = (min + samples - 1) >> shift;
 }
 
 void libtime_init(void)
