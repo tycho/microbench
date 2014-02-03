@@ -14,7 +14,7 @@
 #define ELEM_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 static uint32_t cycles_per_usec;
-static uint64_t min_sleep_ns;
+static int64_t max_sleep_ns;
 static uint64_t sleep_overhead_clk;
 #if defined(TARGET_OS_MACOSX)
 static mach_timebase_info_data_t timebase;
@@ -35,71 +35,71 @@ static inline double fmin(double l, double r)
 
 static uint32_t get_cycles_per_usec(void)
 {
-    uint64_t wc_s, wc_e;
-    uint64_t c_s, c_e;
+	uint64_t wc_s, wc_e;
+	uint64_t c_s, c_e;
 
-    wc_s = libtime_wall();
-    c_s = libtime_cpu();
-    do {
-        uint64_t elapsed;
+	wc_s = libtime_wall();
+	c_s = libtime_cpu();
+	do {
+		uint64_t elapsed;
 
-        wc_e = libtime_wall();
-        elapsed = wc_e - wc_s;
-        if (elapsed >= 1280000) {
-            c_e = libtime_cpu();
-            break;
-        }
-    } while (1);
+		wc_e = libtime_wall();
+		elapsed = wc_e - wc_s;
+		if (elapsed >= 1280000) {
+			c_e = libtime_cpu();
+			break;
+		}
+	} while (1);
 
-    return (c_e - c_s + 127) >> 7;
+	return (c_e - c_s + 127) >> 7;
 }
 
 
 static void libtime_init_wallclock(void)
 {
 #if defined(TARGET_OS_MACOSX)
-    mach_timebase_info(&timebase);
+	mach_timebase_info(&timebase);
 #elif defined(TARGET_OS_WINDOWS)
-    QueryPerformanceFrequency(&perf_frequency);
+	QueryPerformanceFrequency(&perf_frequency);
 #endif
 }
 
 static void libtime_init_cpuclock(void)
 {
-    double delta, mean, S;
-    uint32_t avg, cycles[10];
-    int i, samples;
+	double delta, mean, S;
+	uint32_t avg, cycles[10];
+	int i, samples;
 
-    cycles[0] = get_cycles_per_usec();
-    S = delta = mean = 0.0;
-    for (i = 0; i < ELEM_SIZE(cycles); i++) {
-        cycles[i] = get_cycles_per_usec();
-        delta = cycles[i] - mean;
-        if (delta) {
-            mean += delta / (i + 1.0);
-            S += delta * (cycles[i] - mean);
-        }
-    }
+	cycles[0] = get_cycles_per_usec();
+	S = delta = mean = 0.0;
+	for (i = 0; i < ELEM_SIZE(cycles); i++) {
+		cycles[i] = get_cycles_per_usec();
+		delta = cycles[i] - mean;
+		if (delta) {
+			mean += delta / (i + 1.0);
+			S += delta * (cycles[i] - mean);
+		}
+	}
 
-    S = sqrt(S / (ELEM_SIZE(cycles) - 1.0));
+	S = sqrt(S / (ELEM_SIZE(cycles) - 1.0));
 
-    samples = avg = 0;
-    for (i = 0; i < ELEM_SIZE(cycles); i++) {
-        double this = cycles[i];
+	samples = avg = 0;
+	for (i = 0; i < ELEM_SIZE(cycles); i++) {
+		double this = cycles[i];
 
-        if ((fmax(this, mean) - fmin(this, mean)) > S)
-            continue;
-        samples++;
-        avg += this;
-    }
+		if ((fmax(this, mean) - fmin(this, mean)) > S)
+			continue;
+		samples++;
+		avg += this;
+	}
 
-    S /= (double)ELEM_SIZE(cycles);
-    mean /= 10.0;
+	S /= (double)ELEM_SIZE(cycles);
+	mean /= 10.0;
 
-    avg /= samples;
-    avg = (avg + 9) / 10;
+	avg /= samples;
+	avg = (avg + 9) / 10;
 
-    cycles_per_usec = avg;
+	cycles_per_usec = avg;
 }
 
 static inline void _libtime_nanosleep(void)
@@ -121,41 +121,67 @@ static inline void _libtime_nanosleep(void)
 static void libtime_init_sleep(void)
 {
 	uint32_t i, j;
-	uint64_t s, e, min;
+	uint32_t samples, runs, shift;
+	uint64_t s, e, min, max;
 
 #if defined(TARGET_OS_WINDOWS)
 	timeBeginPeriod(1);
 #endif
 
+	runs = 100;
+	samples = 128;
+	shift = 7;
+
+	/*
+	 * Check if our smallest sleep is large. If it is, we can't do too many
+	 * samples or else the latency for libtime_init() will be very high.
+	 */
+	s = libtime_cpu();
+	_libtime_nanosleep();
+	e = libtime_cpu();
+	if (libtime_cpu_to_wall(e - s) > 1000000) {
+		/*
+		 * Greater than a 100us, we should sample it fewer times so we don't
+		 * waste a lot of time testing it.
+		 */
+		runs = 50;
+		samples = 4;
+		shift = 2;
+	}
+
 	/*
 	 * Estimate the minimum time consumed by a nanosleep(0).
 	 */
-	min = (uint64_t)-1;
-	for (j = 0; j < 100; j++) {
-	    s = libtime_cpu();
-	    for (i = 0; i < 128; i++) {
+	max = 0;
+	for (j = 0; j < runs; j++) {
+		s = libtime_cpu();
+		for (i = 0; i < samples; i++) {
 			_libtime_nanosleep();
-	    }
-	    e = libtime_cpu();
-	    if ((e - s) < min)
-			min = (e - s);
+		}
+		e = libtime_cpu();
+		if ((e - s) > max)
+			max = (e - s);
 	}
-	min_sleep_ns = libtime_cpu_to_wall((min + 127) >> 7);
+	max_sleep_ns = libtime_cpu_to_wall((max + samples - 1) >> shift);
 
 	/*
 	 * Estimate the minimum time consumed by libtime_nanosleep(0).
 	 */
+	runs = 100;
+	samples = 128;
+	shift = 7;
+
 	min = (uint64_t)-1;
-	for (j = 0; j < 100; j++) {
+	for (j = 0; j < runs; j++) {
 		s = libtime_cpu();
-		for (i = 0; i < 128; i++) {
+		for (i = 0; i < samples; i++) {
 			libtime_nanosleep(0);
 		}
 		e = libtime_cpu();
-	    if ((e - s) < min)
+		if ((e - s) < min)
 			min = (e - s);
 	}
-	sleep_overhead_clk = (min + 127) >> 7;
+	sleep_overhead_clk = (min + samples - 1) >> shift;
 }
 
 void libtime_init(void)
@@ -168,21 +194,21 @@ void libtime_init(void)
 uint64_t libtime_wall(void)
 {
 #if defined(TARGET_OS_MACOSX)
-    return (double)mach_absolute_time() * (double)timebase.numer / (double)timebase.denom;
+	return (double)mach_absolute_time() * (double)timebase.numer / (double)timebase.denom;
 #elif defined(TARGET_OS_WINDOWS)
-    LARGE_INTEGER counter;
-    QueryPerformanceCounter(&counter);
-    return (counter.QuadPart * 1000000000) / perf_frequency.QuadPart;
+	LARGE_INTEGER counter;
+	QueryPerformanceCounter(&counter);
+	return (counter.QuadPart * 1000000000) / perf_frequency.QuadPart;
 #else
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (ts.tv_sec * 1000000000) + ts.tv_nsec;
+	struct timespec ts;
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	return (ts.tv_sec * 1000000000) + ts.tv_nsec;
 #endif
 }
 
 uint64_t libtime_cpu_to_wall(uint64_t clock)
 {
-    return (clock * 1000) / cycles_per_usec;
+	return (clock * 1000) / cycles_per_usec;
 }
 
 void libtime_nanosleep(int64_t ns)
@@ -204,7 +230,7 @@ void libtime_nanosleep(int64_t ns)
 		ns_elapsed = libtime_cpu_to_wall(e - s);
 		ns_to_sleep = ns - ns_elapsed;
 
-		if (ns_to_sleep > min_sleep_ns) {
+		if (ns_to_sleep > max_sleep_ns) {
 			_libtime_nanosleep();
 		}
 
