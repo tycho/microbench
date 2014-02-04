@@ -13,6 +13,23 @@
 
 #define ELEM_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
+#ifdef CLOCK_MONOTONIC_RAW
+#ifndef LIBTIME_CLOCK_ID
+#define LIBTIME_CLOCK_ID CLOCK_MONOTONIC_RAW
+#endif
+#endif
+
+#ifdef CLOCK_MONOTONIC
+#ifndef LIBTIME_CLOCK_ID
+#define LIBTIME_CLOCK_ID CLOCK_MONOTONIC
+#endif
+#endif
+
+/* CLOCK_REALTIME is guaranteed by POSIX to exist. */
+#ifndef LIBTIME_CLOCK_ID
+#define LIBTIME_CLOCK_ID CLOCK_REALTIME
+#endif
+
 static uint32_t cycles_per_usec;
 static int64_t max_sleep_ns;
 static uint64_t sleep_overhead_clk;
@@ -113,7 +130,7 @@ static inline void _libtime_nanosleep(void)
 #if defined(TARGET_OS_MACOSX)
 	nanosleep(&ts, NULL);
 #else
-	clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, NULL);
+	clock_nanosleep(LIBTIME_CLOCK_ID, 0, &ts, NULL);
 #endif
 #endif
 }
@@ -201,7 +218,7 @@ uint64_t libtime_wall(void)
 	return (counter.QuadPart * 1000000000) / perf_frequency.QuadPart;
 #else
 	struct timespec ts;
-	clock_gettime(CLOCK_MONOTONIC, &ts);
+	clock_gettime(LIBTIME_CLOCK_ID, &ts);
 	return (ts.tv_sec * 1000000000) + ts.tv_nsec;
 #endif
 }
