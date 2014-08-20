@@ -1,7 +1,7 @@
 include common.mk
 
-BINS := libdispatch-latency/dispatchlatency xen-hypercall/xen-hypercall hz/hz
-DIRS := libdispatch-latency xen-hypercall time hz
+BINS := libdispatch-latency/dispatchlatency hz/hz popcnt/popcnt
+DIRS := libdispatch-latency time hz popcnt
 
 .PHONY: $(BINS) time/libtime.a
 
@@ -25,3 +25,6 @@ xen-hypercall/xen-hypercall:
 
 hz/hz:
 	$(MAKE) -C hz hz
+
+popcnt/popcnt:
+	$(MAKE) -C popcnt popcnt
