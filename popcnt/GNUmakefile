@@ -5,8 +5,6 @@ BIN     := popcnt
 SOURCES := popcnt.c
 OBJECTS := $(SOURCES:%.c=%.o)
 
-CC      := gcc
-
 CFLAGS  += -O3 -march=native
 
 all: $(BIN)
