@@ -1,5 +1,5 @@
 include ../common.mk
-include ../time/libtime.mk
+include ../libtime.mk
 
 BIN     := popcnt
 SOURCES := popcnt.c

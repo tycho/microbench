@@ -1,5 +1,5 @@
-CFLAGS  += -I../time
-LIBS    += -L../time -ltime -lm
+CFLAGS  += -I../libtime/include
+LIBS    += -L../libtime -ltime -lm
 
 ifeq ($(OSNAME),Linux)
 LIBS    += -lrt

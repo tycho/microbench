@@ -1,21 +1,24 @@
 include common.mk
 
 BINS := libdispatch-latency/dispatchlatency hz/hz popcnt/popcnt
-DIRS := libdispatch-latency time hz popcnt
+DIRS := libdispatch-latency libtime hz popcnt
 
-.PHONY: $(BINS) time/libtime.a
+.PHONY: $(BINS) libtime/libtime.a
 
 all: $(BINS)
 
-$(BINS): time/libtime.a
+$(BINS): libtime/libtime.a
 
 clean:
 	for DIR in $(DIRS); do \
 		$(MAKE) -C $$DIR clean; \
 	done
 
-time/libtime.a:
-	$(MAKE) -C time libtime.a
+libtime/.git:
+	git submodule update --init libtime
+
+libtime/libtime.a: libtime/.git
+	$(MAKE) -C libtime libtime.a
 
 libdispatch-latency/dispatchlatency:
 	$(MAKE) -C libdispatch-latency dispatchlatency

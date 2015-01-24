@@ -1,5 +1,5 @@
 include ../common.mk
-include ../time/libtime.mk
+include ../libtime.mk
 
 LIBS    += -lxenctrl
 
