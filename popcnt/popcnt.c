@@ -7,7 +7,7 @@
 
 #include "libtime.h"
 
-#define TRIALS 100
+#define TRIALS 1
 
 /* For Intel compiler */
 #ifndef __POPCNT__
@@ -16,8 +16,70 @@
 #endif
 #endif
 
+//#define SINGLE
+
+#ifdef SINGLE
+#define LINKAGE
+#define POPCNT_VEC1(func)
+#define POPCNT_VEC2(func)
+#define POPCNT_VEC4(func)
+#else
+#define LINKAGE static inline
+#define VEC_LINKAGE __attribute__((noinline))
+#define POPCNT_VEC1(func) \
+	VEC_LINKAGE uint64_t vec_ ##func(uint64_t *p, uint64_t n) \
+	{ \
+		uint64_t c = 0; \
+		for (uint64_t i = 0; i < n; i++) { \
+			c += func(p[i + 0]); \
+		} \
+		return c; \
+	}
+#define POPCNT_VEC2(func) \
+	VEC_LINKAGE uint64_t vec_ ##func(uint64_t *p, uint64_t n) \
+	{ \
+		uint64_t c = 0; \
+		for (uint64_t i = 0; i < n; i += 2) { \
+			c += func(p[i + 0]); \
+			c += func(p[i + 1]); \
+		} \
+		return c; \
+	}
+#define POPCNT_VEC4(func) \
+	VEC_LINKAGE uint64_t vec_ ##func(uint64_t *p, uint64_t n) \
+	{ \
+		uint64_t c = 0; \
+		for (uint64_t i = 0; i < n; i += 4) { \
+			c += func(p[i + 0]); \
+			c += func(p[i + 1]); \
+			c += func(p[i + 2]); \
+			c += func(p[i + 3]); \
+		} \
+		return c; \
+	}
+#define POPCNT_VEC8(func) \
+	VEC_LINKAGE uint64_t vec_ ##func(uint64_t *p, uint64_t n) \
+	{ \
+		uint64_t c = 0; \
+		for (uint64_t i = 0; i < n; i += 8) { \
+			c += func(p[i + 0]); \
+			c += func(p[i + 1]); \
+			c += func(p[i + 2]); \
+			c += func(p[i + 3]); \
+			c += func(p[i + 4]); \
+			c += func(p[i + 5]); \
+			c += func(p[i + 6]); \
+			c += func(p[i + 7]); \
+		} \
+		return c; \
+	}
+#endif
+
+#define POPCNT_VEC POPCNT_VEC4
+
+
 #ifdef __POPCNT__
-static inline uint64_t popcnt_asm(uint64_t n)
+LINKAGE uint64_t popcnt_asm(uint64_t n)
 {
 	uint64_t r;
 	asm("xorq    %q0, %q0\n\t"
@@ -28,9 +90,22 @@ static inline uint64_t popcnt_asm(uint64_t n)
 	);
 	return r;
 }
+POPCNT_VEC(popcnt_asm);
+
+LINKAGE uint64_t popcnt_intrin(uint64_t n)
+{
+	return _mm_popcnt_u64(n);
+}
+POPCNT_VEC(popcnt_intrin);
 #endif
 
-static inline uint64_t popcnt_c(uint64_t n)
+LINKAGE uint64_t popcnt_builtin(uint64_t n)
+{
+	return __builtin_popcountll(n);
+}
+POPCNT_VEC(popcnt_builtin);
+
+LINKAGE uint64_t popcnt_c1(uint64_t n)
 {
 	uint64_t r = 0;
 	while(n) {
@@ -39,6 +114,32 @@ static inline uint64_t popcnt_c(uint64_t n)
 	}
 	return r;
 }
+POPCNT_VEC(popcnt_c1);
+
+#if 0
+LINKAGE uint64_t popcnt_c2(uint64_t n)
+{
+	uint64_t r = 0;
+	while(n) {
+		if (n & 1)
+			r++;
+		n >>= 1;
+	}
+	return r;
+}
+POPCNT_VEC(popcnt_c2);
+
+LINKAGE uint64_t popcnt_c3(uint64_t n)
+{
+	uint64_t r = 0;
+	while(n) {
+		r += (n & 1);
+		n >>= 1;
+	}
+	return r;
+}
+POPCNT_VEC(popcnt_c3);
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -76,13 +177,7 @@ int main(int argc, char* argv[])
 		startP = libtime_cpu();
 		count = 0;
 		for (unsigned k = 0; k < TRIALS; k++) {
-			// Tight unrolled loop with unsigned
-			for (uint64_t i = 0; i < elems; i += 4) {
-				count += __builtin_popcountll(buffer[i]);
-				count += __builtin_popcountll(buffer[i+1]);
-				count += __builtin_popcountll(buffer[i+2]);
-				count += __builtin_popcountll(buffer[i+3]);
-			}
+			count += vec_popcnt_builtin(buffer, elems);
 		}
 		endP = libtime_cpu();
 		duration = (double)libtime_cpu_to_wall(endP - startP) * 1e-9;
@@ -95,13 +190,7 @@ int main(int argc, char* argv[])
 		startP = libtime_cpu();
 		count = 0;
 		for (unsigned k = 0; k < TRIALS; k++) {
-			// Tight unrolled loop with uint64_t
-			for (uint64_t i = 0; i < elems; i += 4) {
-				count += _mm_popcnt_u64(buffer[i]);
-				count += _mm_popcnt_u64(buffer[i+1]);
-				count += _mm_popcnt_u64(buffer[i+2]);
-				count += _mm_popcnt_u64(buffer[i+3]);
-			}
+			count += vec_popcnt_intrin(buffer, elems);
 		}
 		endP = libtime_cpu();
 		duration = (double)libtime_cpu_to_wall(endP - startP) * 1e-9;
@@ -113,13 +202,7 @@ int main(int argc, char* argv[])
 		startP = libtime_cpu();
 		count = 0;
 		for (unsigned k = 0; k < TRIALS; k++) {
-			// Tight unrolled loop with uint64_t
-			for (uint64_t i = 0; i < elems; i += 4) {
-				count += popcnt_asm(buffer[i]);
-				count += popcnt_asm(buffer[i+1]);
-				count += popcnt_asm(buffer[i+2]);
-				count += popcnt_asm(buffer[i+3]);
-			}
+			count += vec_popcnt_asm(buffer, elems);
 		}
 		endP = libtime_cpu();
 		duration = (double)libtime_cpu_to_wall(endP - startP) * 1e-9;
@@ -132,13 +215,7 @@ int main(int argc, char* argv[])
 		startP = libtime_cpu();
 		count = 0;
 		for (unsigned k = 0; k < TRIALS; k++) {
-			// Tight unrolled loop with uint64_t
-			for (uint64_t i = 0; i < elems; i += 4) {
-				count += popcnt_c(buffer[i]);
-				count += popcnt_c(buffer[i+1]);
-				count += popcnt_c(buffer[i+2]);
-				count += popcnt_c(buffer[i+3]);
-			}
+			count += vec_popcnt_c1(buffer, elems);
 		}
 		endP = libtime_cpu();
 		duration = (double)libtime_cpu_to_wall(endP - startP) * 1e-9;
