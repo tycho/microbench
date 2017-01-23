@@ -5,7 +5,7 @@ BIN     := popcnt
 SOURCES := popcnt.c
 OBJECTS := $(SOURCES:%.c=%.o)
 
-CFLAGS  += -O3 -march=native
+CFLAGS  += -march=core-avx2
 
 all: $(BIN)
 

@@ -18,4 +18,4 @@ endif
 LINK       := $(CC)
 AR         := ar rcu
 RM         := rm -f
-CFLAGS     := -O2 -std=gnu99 -fno-strict-aliasing -Wall -Werror
+CFLAGS     := -O3 -std=gnu99 -fno-strict-aliasing -fno-strict-overflow -fno-stack-protector -Wall
