@@ -9,6 +9,13 @@
 
 #define TRIALS 100
 
+/* For Intel compiler */
+#ifndef __POPCNT__
+#ifdef __SSE4_2__
+#define __POPCNT__ 1
+#endif
+#endif
+
 #ifdef __POPCNT__
 static inline uint64_t popcnt_asm(uint64_t n)
 {
